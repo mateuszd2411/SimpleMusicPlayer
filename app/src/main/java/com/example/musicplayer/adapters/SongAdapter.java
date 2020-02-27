@@ -48,7 +48,7 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.VH> {
 
     }
 
-    private Uri getImage(long albumId) {
+    public static Uri getImage(long albumId) {
         return ContentUris.withAppendedId(Uri.parse("content://media/external/audio/albumart"), albumId);
 
     }
