@@ -5,10 +5,9 @@
     android:layout_height="match_parent"
     tools:context=".fragments.SongsFragment">
 
-    <!-- TODO: Update blank fragment layout -->
-    <TextView
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/sr"
+        android:layout_margin="4dp"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:text="@string/hello_blank_fragment" />
-
+        android:layout_height="match_parent" />
 </FrameLayout>
