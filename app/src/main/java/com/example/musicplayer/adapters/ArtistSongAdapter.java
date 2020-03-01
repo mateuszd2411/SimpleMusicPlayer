@@ -14,30 +14,29 @@ import com.example.musicplayer.models.Song;
 
 import java.util.List;
 
-public class AlbumSongAdapter extends RecyclerView.Adapter<AlbumSongAdapter.ASVH> {
+public class ArtistSongAdapter extends RecyclerView.Adapter<ArtistSongAdapter.VH> {
 
     private Activity context;
-    private List<Song> albumSongList;
+    private List<Song> artistSongList;
 
-    public AlbumSongAdapter(Activity context, List<Song> albumSongList) {
+    public ArtistSongAdapter(Activity context, List<Song> artistSongList) {
         this.context = context;
-        this.albumSongList = albumSongList;
+        this.artistSongList = artistSongList;
     }
 
     @NonNull
     @Override
-    public ASVH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        return new ASVH(LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.album_list_layout, parent, false));
+    public ArtistSongAdapter.VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        return new VH(LayoutInflater.from(parent.getContext())
+        .inflate(R.layout.album_list_layout,parent,false));
     }
 
     @Override
-    public void onBindViewHolder(@NonNull ASVH holder, int position) {
-
-        Song song = albumSongList.get(position);
+    public void onBindViewHolder(@NonNull ArtistSongAdapter.VH holder, int position) {
+        Song song = artistSongList.get(position);
 /// 12 21  part8
         if (song!=null){
-           
+
             holder.atv.setText(song.title);
             holder.dtv.setText(song.artistName);
             int trackN = song.trackNumber;
@@ -45,24 +44,23 @@ public class AlbumSongAdapter extends RecyclerView.Adapter<AlbumSongAdapter.ASVH
                 holder.ntv.setText("-");
             }else holder.ntv.setText(String.valueOf(trackN));
         }
-
     }
 
     @Override
     public int getItemCount() {
-        return albumSongList!=null?albumSongList.size():0;
+        return artistSongList!=null?artistSongList.size():0;
     }
 
-    public class ASVH extends RecyclerView.ViewHolder {
-
+    public class VH extends RecyclerView.ViewHolder {
         private TextView atv,ntv,dtv;
 
-        public ASVH(@NonNull View view) {
+        public VH(@NonNull View view) {
             super(view);
 
             atv = view.findViewById(R.id.songTitle);
             ntv = view.findViewById(R.id.number);
             dtv = view.findViewById(R.id.detail);
+
 
         }
     }

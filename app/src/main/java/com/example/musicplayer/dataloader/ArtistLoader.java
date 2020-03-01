@@ -28,12 +28,12 @@ public class ArtistLoader {
         return list;
     }
 
-    public Artis getArtis(Context context, long id){
+    public static Artis getArtis(Context context, long id){
 
         return artis(makeCursor(context,"_id=?",new String[]{String.valueOf(id)}));
     }
 
-    private Artis artis(Cursor cursor) {
+    private static Artis artis(Cursor cursor) {
         Artis artis = new Artis();
         if (cursor.moveToFirst()&&cursor!=null){
 
