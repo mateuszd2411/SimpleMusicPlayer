@@ -19,6 +19,7 @@ import android.os.Bundle;
 import android.util.Log;
 
 import com.example.musicplayer.dataloader.SongLoader;
+import com.example.musicplayer.fragments.AlbumDetailsFragment;
 import com.example.musicplayer.fragments.AlbumFragment;
 import com.example.musicplayer.fragments.ArtistFragment;
 import com.example.musicplayer.fragments.MainFragment;

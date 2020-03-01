@@ -14,7 +14,7 @@
         <ImageView
             android:id="@+id/albumimg"
             android:layout_width="0dp"
-            android:layout_height="190dp"
+            android:layout_height="220dp"
             android:background="#F1EAEA"
             android:contentDescription="@string/song_note"
             app:layout_constraintEnd_toEndOf="parent"

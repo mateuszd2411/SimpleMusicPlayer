@@ -35,6 +35,9 @@ dependencies {
     implementation 'com.google.android.material:material:1.1.0-beta01'
     implementation 'net.steamcrafted:materialiconlib:1.1.5'
     implementation 'com.sothree.slidinguppanel:library:3.4.0'
+//    implementation 'com.github.Theophrast:SquareImageView:1.0.1'
+
+
     implementation 'com.google.code.gson:gson:2.8.6'
     implementation "androidx.media:media:1.1.0"
 
