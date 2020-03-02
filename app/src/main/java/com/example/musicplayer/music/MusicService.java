@@ -4,6 +4,7 @@ import android.app.Service;
 import android.content.Intent;
 import android.os.IBinder;
 import android.os.RemoteException;
+import android.util.Log;
 
 import androidx.annotation.Nullable;
 
@@ -13,17 +14,21 @@ import java.lang.ref.WeakReference;
 
 public class MusicService extends Service {
 
+    private static final String TAG = "MusicService";
+
     private final IBinder I_BINDER = new SubStub(this);
 
 
     @Override
     public void onCreate() {
+        Log.v(TAG, "onCreate");
         super.onCreate();
     }
 
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
+        Log.v(TAG, "onCreate");
         return I_BINDER;
     }
 
