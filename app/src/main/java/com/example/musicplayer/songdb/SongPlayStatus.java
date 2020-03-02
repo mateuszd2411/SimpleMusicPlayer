@@ -2,9 +2,11 @@ package com.example.musicplayer.songdb;
 
 import android.content.ContentValues;
 import android.content.Context;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
 import com.example.musicplayer.models.PlayBackTrack;
+import com.example.musicplayer.util.AxUtil;
 
 import java.util.ArrayList;
 
@@ -37,7 +39,7 @@ public class SongPlayStatus {
         builder.append(SongColumn.SOURCE_TYPE);
         builder.append(" INT NOT NULL,");
         builder.append(SongColumn.SOURCE_POSITION);
-        builder.append(" INT NOT NULL");
+        builder.append(" INT NOT NULL)");
         db.execSQL(builder.toString());
     }
 
@@ -61,6 +63,7 @@ public class SongPlayStatus {
 
         try {
             sqLiteDatabase.delete(SongColumn.NAME,null, null);
+            sqLiteDatabase.setTransactionSuccessful();  ///+2 32 par13
         } finally {
             sqLiteDatabase.endTransaction();
         }
@@ -72,7 +75,7 @@ public class SongPlayStatus {
 
             sqLiteDatabase.beginTransaction();
             try {
-                for (int i=0;i<list.size() && i<list.size()+PROSESS_NUM; i++){
+                for (int i= position;i < list.size() && i< position + PROSESS_NUM; i++){
                     PlayBackTrack track = list.get(i);
                     ContentValues values = new ContentValues(4);
                     values.put(SongColumn.TRACK_ID,track.mId);
@@ -89,6 +92,31 @@ public class SongPlayStatus {
 
         }
     }
+
+    public ArrayList<PlayBackTrack> getSongToDb(){
+        ArrayList<PlayBackTrack> result = new ArrayList<>();
+        Cursor cursor = audioDB.getReadableDatabase().query(SongColumn.NAME,null,null,
+                null,null,null,null);
+        try {
+            if (cursor!=null && cursor.moveToFirst()){
+                result.ensureCapacity(cursor.getCount());
+                do {
+                    result.add(new PlayBackTrack(cursor.getLong(0),cursor.getLong(1),
+                            AxUtil.IdType.getInstance(cursor.getInt(2)),cursor.getInt(3)));
+                } while (cursor.moveToNext());
+            }
+            return result;
+        } finally {
+            if (cursor!=null){
+                cursor.close();
+                cursor = null;
+            }
+
+        }
+    }
+
+
+
 
     private static class SongColumn {
         public static String NAME ="playbacktrack";

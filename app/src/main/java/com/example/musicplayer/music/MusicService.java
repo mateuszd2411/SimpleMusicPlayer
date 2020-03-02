@@ -23,18 +23,20 @@ public class MusicService extends Service {
     private final IBinder I_BINDER = new SubStub(this);
     public static ArrayList<PlayBackTrack> mPlayList = new ArrayList<>(100);
     private SongPlayStatus mSongPlayStatus;
+    private int mPlayPos = -1;
 
     @Override
     public void onCreate() {
         Log.v(TAG, "onCreate");
         super.onCreate();
         mSongPlayStatus = SongPlayStatus.getInstance(this);
+        mPlayList = mSongPlayStatus.getSongToDb();
     }
 
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
-        Log.v(TAG, "onCreate");
+        Log.v(TAG, "onBind");
         return I_BINDER;
     }
 
@@ -47,9 +49,11 @@ public class MusicService extends Service {
 
             int mLenght = list.length;
             boolean newList = true;
-            if (mLenght == mPlayList.size()){
+            if (mPlayList.size() == mLenght){
                 newList = false;
-                for (int i=0;i<mLenght;i++){
+                Log.v(TAG, " " + mPlayList.size());
+                for (int i=0; i<mLenght; i++){
+
                     if (list[i] != mPlayList.get(i).mId){
                         newList = true;
                         break;
@@ -60,6 +64,10 @@ public class MusicService extends Service {
                 addToPlayList(list,-1,sourceId,idType);
                 mSongPlayStatus.saveSongInDb(mPlayList);
             }
+
+            if (position >= 0){
+                mPlayPos = position;
+            }
         }
 
 
@@ -68,17 +76,62 @@ public class MusicService extends Service {
     private void addToPlayList(long[] list, int position, long sourceId, AxUtil.IdType idType) {
 
         int addLenght = list.length;
+        if (position < 0){
+            mPlayList.clear();
+            position = 0;
+        }
         mPlayList.ensureCapacity(mPlayList.size()+addLenght);
+        if (position > mPlayList.size()){
+            position = mPlayList.size();
+        }
 
         ArrayList<PlayBackTrack> mList = new ArrayList<>(addLenght);
 
-        for (int i=0;i<addLenght;i++){
+        for (int i=0; i< addLenght; i++){
             mList.add(new PlayBackTrack(list[i], sourceId, idType,i));
         }
 
         mPlayList.addAll(mList);
-        Log.v(TAG," " +mPlayList.size());
 
+
+
+    }
+
+
+    public long getAudioId() {
+        PlayBackTrack track = getCurrentTruck();
+        if (track != null){
+            return track.mId;
+        }
+        return -1;
+
+    }
+
+    public PlayBackTrack getCurrentTruck() {
+        return getTrack(mPlayPos);
+    }
+
+    public synchronized PlayBackTrack getTrack(int index) {
+        if (index != -1 && index < mPlayList.size()){
+            return  mPlayList.get(index);
+        }
+        return null;
+    }
+
+    private int getQueuePosition() {
+        synchronized (this) {
+            return mPlayPos;
+        }
+    }
+
+    public long[] getsaveIdList() {
+        synchronized (this) {
+            long[] idL = new long[mPlayList.size()];
+            for (int i = 0; i < mPlayList.size(); i++){
+                idL[i] = mPlayList.get(i).mId;
+            }
+            return idL;
+        }
 
     }
 
@@ -105,7 +158,23 @@ public class MusicService extends Service {
         public void stop() throws RemoteException {
 
         }
+
+        @Override
+        public long getAudioId() throws RemoteException {
+            return mService.get().getAudioId();
+        }
+
+        @Override
+        public int getCurrentPos() throws RemoteException {
+            return mService.get().getQueuePosition();
+        }
+
+        @Override
+        public long[] getsaveIdList() throws RemoteException {
+            return mService.get().getsaveIdList();
+        }
     }
+
 
 
 
