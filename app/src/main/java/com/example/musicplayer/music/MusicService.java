@@ -9,21 +9,26 @@ import android.util.Log;
 import androidx.annotation.Nullable;
 
 import com.example.musicplayer.MusicAIDL;
+import com.example.musicplayer.models.PlayBackTrack;
+import com.example.musicplayer.songdb.SongPlayStatus;
 import com.example.musicplayer.util.AxUtil;
 
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
 
 public class MusicService extends Service {
 
     private static final String TAG = "MusicService";
 
     private final IBinder I_BINDER = new SubStub(this);
-
+    public static ArrayList<PlayBackTrack> mPlayList = new ArrayList<>(100);
+    private SongPlayStatus mSongPlayStatus;
 
     @Override
     public void onCreate() {
         Log.v(TAG, "onCreate");
         super.onCreate();
+        mSongPlayStatus = SongPlayStatus.getInstance(this);
     }
 
     @Nullable
@@ -36,8 +41,43 @@ public class MusicService extends Service {
 
     //////////All method
 
-    private void open(long[] list, int position, long sourceId, AxUtil.IdType instance) {
-        Log.v(TAG," " +list.length );
+    private void open(long[] list, int position, long sourceId, AxUtil.IdType idType) {
+
+        synchronized (this){
+
+            int mLenght = list.length;
+            boolean newList = true;
+            if (mLenght == mPlayList.size()){
+                newList = false;
+                for (int i=0;i<mLenght;i++){
+                    if (list[i] != mPlayList.get(i).mId){
+                        newList = true;
+                        break;
+                    }
+                }
+            }
+            if (newList){
+                addToPlayList(list,-1,sourceId,idType);
+                mSongPlayStatus.saveSongInDb(mPlayList);
+            }
+        }
+
+
+    }
+
+    private void addToPlayList(long[] list, int position, long sourceId, AxUtil.IdType idType) {
+
+        int addLenght = list.length;
+        mPlayList.ensureCapacity(mPlayList.size()+addLenght);
+
+        ArrayList<PlayBackTrack> mList = new ArrayList<>(addLenght);
+
+        for (int i=0;i<addLenght;i++){
+            mList.add(new PlayBackTrack(list[i], sourceId, idType,i));
+        }
+
+        mPlayList.addAll(mList);
+        Log.v(TAG," " +mPlayList.size());
 
 
     }
