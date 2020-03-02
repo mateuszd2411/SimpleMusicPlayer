@@ -2,7 +2,12 @@ package com.example.musicplayer.music;
 
 import android.app.Service;
 import android.content.Intent;
+import android.media.AudioManager;
+import android.media.MediaPlayer;
+import android.net.Uri;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Message;
 import android.os.RemoteException;
 import android.util.Log;
 
@@ -13,12 +18,17 @@ import com.example.musicplayer.models.PlayBackTrack;
 import com.example.musicplayer.songdb.SongPlayStatus;
 import com.example.musicplayer.util.AxUtil;
 
+import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 
 public class MusicService extends Service {
 
     private static final String TAG = "MusicService";
+    private static final int SERVIRE_DIE = 10;
+    private static final int FADE_UP = 11;
+    private static final int FADE_DOWN = 12;
+    private static final int FOCUSE_CHANGE = 12;
 
     private final IBinder I_BINDER = new SubStub(this);
     public static ArrayList<PlayBackTrack> mPlayList = new ArrayList<>(100);
@@ -136,6 +146,133 @@ public class MusicService extends Service {
     }
 
     ///////////////All method
+
+    ////mediaplayer
+
+
+    public class MyMidea implements MediaPlayer.OnErrorListener, MediaPlayer.OnCompletionListener{
+
+        private WeakReference<MusicService> mService;
+        private MediaPlayer mMediaPlayer = new MediaPlayer();
+        private boolean mIsinitialized = false;
+        private Handler mHandler;
+        private float mVolume;
+
+
+        public MyMidea(MusicService service) {
+            this.mService = new WeakReference<>(service);
+        }
+
+        public void setDataSource(String path){
+            mIsinitialized = setDataPath(mMediaPlayer,path);
+        }
+
+        private boolean setDataPath(MediaPlayer mMediaPlayer, String path) {
+
+            try {
+                mMediaPlayer.reset();
+                mMediaPlayer.setOnPreparedListener(null);
+                if (path.startsWith("content://")){
+                    mMediaPlayer.setDataSource(mService.get(), Uri.parse(path));
+                } else {
+                    mMediaPlayer.setDataSource(path);
+                }
+
+                mMediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+                mMediaPlayer.prepare();
+                mMediaPlayer.setOnErrorListener(this);
+                mMediaPlayer.setOnCompletionListener(this);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            return true;
+        }
+
+        public boolean mInitialized(){
+            return mIsinitialized;
+        }
+
+        private void setHandeler(Handler handeler){
+            mHandler = handeler;
+        }
+
+        public void start(){
+            mMediaPlayer.start();
+        }
+
+        public void stop(){
+            mMediaPlayer.stop();
+            mIsinitialized = false;
+        }
+
+        public void pause(){
+            mMediaPlayer.pause();
+        }
+
+        public void release(){
+            stop();
+            mMediaPlayer.release();
+        }
+
+
+
+        public long duration(){
+            if (mMediaPlayer!=null && mInitialized()){
+                return mMediaPlayer.getDuration();
+            }
+            return -1;
+        }
+
+
+        public long position(){
+            if (mMediaPlayer!=null && mInitialized()) {
+                return mMediaPlayer.getCurrentPosition();
+            }
+            return 0;
+        }
+
+
+        public void setVolume(float vol){
+            mMediaPlayer.setVolume(vol,vol);
+            mVolume = vol;
+        }
+
+        public long seek(long whereto){
+            mMediaPlayer.seekTo((int) whereto);
+            return whereto;
+        }
+
+
+
+
+
+        @Override
+        public void onCompletion(MediaPlayer mp) {
+
+        }
+
+        @Override
+        public boolean onError(MediaPlayer mediaPlayer, int what, int extra) {
+
+            switch (what){
+                case MediaPlayer.MEDIA_ERROR_SERVER_DIED:
+                    mIsinitialized = false;
+                        mediaPlayer.release();
+                        mediaPlayer = new MediaPlayer();
+                        Message message = mHandler.obtainMessage(SERVIRE_DIE);
+                        mHandler.sendMessageDelayed(message,2000);
+                        break;
+                        default:
+                            break;
+            }
+
+            return false;
+        }
+    }
+
+
+    //// MediaPlayer
 
     private static final class SubStub extends MusicAIDL.Stub{
         private WeakReference<MusicService> mService;
