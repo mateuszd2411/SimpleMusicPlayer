@@ -2,6 +2,8 @@ package com.example.musicplayer.adapters;
 
 import android.content.ContentUris;
 import android.net.Uri;
+import android.os.Handler;
+import android.os.RemoteException;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,18 +15,25 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.musicplayer.R;
 import com.example.musicplayer.models.Song;
+import com.example.musicplayer.util.AxUtil;
 import com.nostra13.universalimageloader.core.DisplayImageOptions;
 import com.nostra13.universalimageloader.core.ImageLoader;
 
 import java.util.List;
 
+import static com.example.musicplayer.music.PlayerServices.playAll;
+
 public class SongAdapter extends RecyclerView.Adapter<SongAdapter.VH> {
 
     private List<Song> songsList;
+    private long[] mIds;
 
     public SongAdapter(List<Song> songsList) {
         this.songsList = songsList;
+        mIds = getIds();
     }
+
+
 
     @NonNull
     @Override
@@ -58,7 +67,16 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.VH> {
         return songsList!=null?songsList.size():0;
     }
 
-    public class VH extends RecyclerView.ViewHolder{
+    private long[] getIds() {
+
+        long[] res = new long[getItemCount()];
+        for (int i=0;i<getItemCount();i++){
+            res[i] = songsList.get(i).id;
+        }
+        return res;
+    }
+
+    public class VH extends RecyclerView.ViewHolder implements View.OnClickListener {
 
         private ImageView imageView;
         private TextView titl, arts;
@@ -69,6 +87,25 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.VH> {
             imageView = (ImageView)itemView.findViewById(R.id.songthumb);
             titl = (TextView) itemView.findViewById(R.id.songname);
             arts = (TextView) itemView.findViewById(R.id.artistname);
+            itemView.setOnClickListener(this);
+
+
+        }
+
+        @Override
+        public void onClick(View v) {
+
+            Handler handler = new Handler();
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        playAll(mIds,getAdapterPosition(),songsList.get(getAdapterPosition()).id, AxUtil.IdType.NA);
+                    }catch (RemoteException e){
+                        e.printStackTrace();
+                    }
+                }
+            },100);
 
 
         }

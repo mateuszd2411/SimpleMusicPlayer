@@ -95,6 +95,14 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (token != null){
+            PlayerServices.unbindToService(token);
+            token = null;
+        }
+    }
 
     @Override
     public void onServiceConnected(ComponentName componentName, IBinder iBinder) {

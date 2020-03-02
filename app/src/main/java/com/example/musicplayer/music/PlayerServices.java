@@ -7,8 +7,10 @@ import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.IBinder;
+import android.os.RemoteException;
 
 import com.example.musicplayer.MusicAIDL;
+import com.example.musicplayer.util.AxUtil;
 
 import java.util.WeakHashMap;
 
@@ -42,6 +44,41 @@ public class PlayerServices {
 
         return null;
     }
+
+    public static void unbindToService(ServiceToken token){
+        if (token==null){
+            return;
+        }
+
+        ContextWrapper mWrapper = token.contextWrapper;
+        ServiceBinder binder = mHashMap.remove(mWrapper);
+        if (binder==null){
+            return;
+        }
+
+        mWrapper.unbindService(binder);
+        if (mHashMap.isEmpty()){
+            binder = null;
+        }
+    }
+
+
+    /////all method////////////////
+
+
+    public static void playAll(long[] list, int position, long sourceId, AxUtil.IdType type) throws RemoteException {
+
+        if (list.length==0 && list == null && mRemot ==null){
+            return;
+        }
+
+        mRemot.open(list,position,sourceId,type.mId);
+
+    }
+
+
+
+    /////////all method/////////end
 
 
 
