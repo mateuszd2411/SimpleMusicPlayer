@@ -89,6 +89,7 @@ public class PlayerServices {
         }
 
         mRemot.open(list,position,sourceId,type.mId);
+        play();
 
     }
 

@@ -1,16 +1,23 @@
 package com.example.musicplayer.music;
 
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.Message;
+import android.os.Process;
 import android.os.RemoteException;
+import android.provider.MediaStore;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.example.musicplayer.MusicAIDL;
@@ -34,6 +41,21 @@ public class MusicService extends Service {
     public static ArrayList<PlayBackTrack> mPlayList = new ArrayList<>(100);
     private SongPlayStatus mSongPlayStatus;
     private int mPlayPos = -1;
+    private SharedPreferences preferences;
+    private MyMidea mPlayer;
+    private boolean isSuppossedToPlaying = false;
+    private boolean mPausedByTransientLoosOfFocus = false;
+    private AudioManager mAudioManager;
+    private MyPlayerHandler myPlayerHandler;
+    private HandlerThread mHandlerThead;
+    private AudioManager.OnAudioFocusChangeListener focusChangeListener = new AudioManager.OnAudioFocusChangeListener() {
+        @Override
+        public void onAudioFocusChange(int i) {
+            myPlayerHandler.obtainMessage(FOCUSE_CHANGE,i,0).sendToTarget();
+
+        }
+    };
+
 
     @Override
     public void onCreate() {
@@ -41,6 +63,18 @@ public class MusicService extends Service {
         super.onCreate();
         mSongPlayStatus = SongPlayStatus.getInstance(this);
         mPlayList = mSongPlayStatus.getSongToDb();
+        preferences= getSharedPreferences("musicservice",0);
+
+        mPlayPos = preferences.getInt("pos",0);
+        mHandlerThead = new HandlerThread("MyPlayerHandler", Process.THREAD_PRIORITY_BACKGROUND);
+        mHandlerThead.start();
+        myPlayerHandler = new MyPlayerHandler(mHandlerThead.getLooper(), this);
+
+        mPlayer = new MyMidea(this);
+        mPlayer.setHandeler(myPlayerHandler);
+
+
+        mAudioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
     }
 
     @Nullable
@@ -142,6 +176,26 @@ public class MusicService extends Service {
             }
             return idL;
         }
+
+    }
+
+    private void pause() {
+
+    }
+
+    private void play() {
+
+        mPlayer.setDataSource(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI + "/" + mPlayList.get(mPlayPos).mId);
+        mAudioManager.requestAudioFocus(focusChangeListener,AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
+
+        mPlayer.start();
+        myPlayerHandler.removeMessages(FADE_DOWN);
+        myPlayerHandler.sendEmptyMessage(FADE_UP);
+        isSuppossedToPlaying = true;
+
+    }
+
+    private void stop() {
 
     }
 
@@ -274,6 +328,94 @@ public class MusicService extends Service {
 
     //// MediaPlayer
 
+    //////PlayerHandler....................
+
+
+    public class MyPlayerHandler extends Handler{
+        private WeakReference<MusicService> mServise;
+        private float mVolume = 1.0f;
+
+        public MyPlayerHandler(@NonNull Looper looper, MusicService service) {
+            super(looper);
+            this.mServise = new WeakReference<>(service);
+        }
+
+        @Override
+        public void handleMessage(@NonNull Message msg) {
+
+            MusicService service = mServise.get();
+            if (service==null){
+                return;
+            }
+
+            synchronized (service){
+                switch (msg.what){
+                    case FOCUSE_CHANGE:
+                        switch (msg.arg1){
+                            case FADE_UP:
+                                mVolume += 0.1f;
+                                if (mVolume < 1.0f){
+                                    sendEmptyMessageDelayed(FADE_UP,10);
+                                }else {
+                                    mVolume = 1.0f;
+                                }
+                                service.mPlayer.setVolume(mVolume);
+                                break;
+
+                            case FADE_DOWN:
+                                mVolume -= 0.5f;
+                                if (mVolume < 0.2f){
+                                    sendEmptyMessageDelayed(FADE_DOWN,10);
+                                }else {
+                                    mVolume = 0.2f;
+                                }
+                                service.mPlayer.setVolume(mVolume);
+                                break;
+                            case AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK:
+                                removeMessages(FADE_UP);
+                                sendEmptyMessage(FADE_DOWN);
+                                break;
+                            case AudioManager.AUDIOFOCUS_LOSS:
+                                if (service.isSuppossedToPlaying){
+                                    service.mPausedByTransientLoosOfFocus =false;
+                                }
+                                service.pause();
+                                break;
+                            case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
+                                if (service.isSuppossedToPlaying){
+                                    service.mPausedByTransientLoosOfFocus =true;
+                                }
+                                service.pause();
+                                break;
+                            case AudioManager.AUDIOFOCUS_GAIN:
+                                if (!service.isSuppossedToPlaying && service.mPausedByTransientLoosOfFocus){
+                                    service.mPausedByTransientLoosOfFocus =false;
+                                    mVolume = 0.0f;
+                                    service.mPlayer.setVolume(mVolume);
+                                    service.play();
+                                } else {
+                                    removeMessages(FADE_DOWN);
+                                    sendEmptyMessage(FADE_UP);
+                                }
+
+                                break;
+
+                        }
+
+                        break;
+
+                }
+            }
+
+            super.handleMessage(msg);
+        }
+    }
+
+
+
+
+    //////PlayerHandler....................
+
     private static final class SubStub extends MusicAIDL.Stub{
         private WeakReference<MusicService> mService;
 
@@ -288,12 +430,12 @@ public class MusicService extends Service {
 
         @Override
         public void play() throws RemoteException {
-
+            mService.get().play();
         }
 
         @Override
         public void stop() throws RemoteException {
-
+            mService.get().stop();
         }
 
         @Override
