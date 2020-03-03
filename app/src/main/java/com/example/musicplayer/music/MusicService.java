@@ -1,8 +1,10 @@
 package com.example.musicplayer.music;
 
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
@@ -32,6 +34,17 @@ import java.util.ArrayList;
 public class MusicService extends Service {
 
     private static final String TAG = "MusicService";
+
+
+    private static final String TOGGLEPAUSE_ACTION = "com.example.musicplayer.togglepause";
+    private static final String PLAY_ACTION = "com.example.musicplayer.ACTION_PLAY";
+    private static final String PAUSE_ACTION = "com.example.musicplayer.ACTION_PAUSE";
+    private static final String STOP_ACTION = "com.example.musicplayer.ACTION_STOP";
+    private static final String NEXT_ACTION = "com.example.musicplayer.ACTION_NEXT";
+    private static final String PREVIOUS_ACTION = "com.example.musicplayer.ACTION_PREVIOUS";
+
+
+
     private static final int SERVIRE_DIE = 10;
     private static final int FADE_UP = 11;
     private static final int FADE_DOWN = 12;
@@ -48,7 +61,18 @@ public class MusicService extends Service {
     private boolean mPausedByTransientLoosOfFocus = false;
     private AudioManager mAudioManager;
     private MyPlayerHandler myPlayerHandler;
-    private HandlerThread mHandlerThead;
+    private HandlerThread mHandlerThread;
+
+
+    private BroadcastReceiver receiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+
+            commandhandler(intent);
+        }
+    };
+
+
 
     private AudioManager.OnAudioFocusChangeListener focusChangeListener = new AudioManager.OnAudioFocusChangeListener() {
         @Override
@@ -83,14 +107,23 @@ public class MusicService extends Service {
         preferences= getSharedPreferences("musicservice",0);
 
         mPlayPos = preferences.getInt("pos",0);
-        mHandlerThead = new HandlerThread("MyPlayerHandler", Process.THREAD_PRIORITY_BACKGROUND);
-        mHandlerThead.start();
-        myPlayerHandler = new MyPlayerHandler(mHandlerThead.getLooper(), this);
+        mHandlerThread = new HandlerThread("MyPlayerHandler", Process.THREAD_PRIORITY_BACKGROUND);
+        mHandlerThread.start();
+        myPlayerHandler = new MyPlayerHandler(mHandlerThread.getLooper(), this);
 
         mPlayer = new MyMidea(this);
         mPlayer.setHandeler(myPlayerHandler);
 
 
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(TOGGLEPAUSE_ACTION);
+        filter.addAction(PLAY_ACTION);
+        filter.addAction(PAUSE_ACTION);
+        filter.addAction(NEXT_ACTION);
+        filter.addAction(PREVIOUS_ACTION);
+        filter.addAction(STOP_ACTION);
+
+        registerReceiver(receiver,filter);
         mAudioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
     }
 
@@ -104,6 +137,9 @@ public class MusicService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
 
+        if (intent != null){
+            commandhandler(intent);
+        }
 
         return START_NOT_STICKY;
     }
@@ -120,6 +156,35 @@ public class MusicService extends Service {
     }
 
     //////////All method
+
+
+    private void commandhandler(Intent intent) {
+
+        String action = intent.getAction();
+
+        if (TOGGLEPAUSE_ACTION.equals(action)){
+            if (isPlaying()){
+                pause();
+                mPausedByTransientLoosOfFocus = false;
+            }else {
+                play();
+            }
+        }else if (PLAY_ACTION.equals(action)){
+            play();
+        }else if (PAUSE_ACTION.equals(action)){
+            pause();
+            mPausedByTransientLoosOfFocus = false;
+        }else if (NEXT_ACTION.equals(action)){
+            goToNext();
+        }else if (PREVIOUS_ACTION.equals(action)){
+            previous_truck();
+        }
+
+    }
+
+    private void previous_truck(){
+
+    }
 
     private void goToNext(){
         if (mPlayPos <= mPlayList.size() && mPlayPos >= 0){

@@ -13,6 +13,8 @@ import androidx.core.app.NotificationCompat;
 
 public class MediaStyleHelper {
 
+    public static final String NOTIFICATION_ID = "musicx";
+
     public static PendingIntent getActionIntent(Context context, String action){
         ComponentName component = new ComponentName(context, MusicService.class);
         Intent intent = new Intent(action);
@@ -25,7 +27,7 @@ public class MediaStyleHelper {
         MediaMetadataCompat metadataCompat = controllerCompat.getMetadata();
         MediaDescriptionCompat descriptionCompat = metadataCompat.getDescription();
 
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(context,"nusicx");
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context,NOTIFICATION_ID);
         builder.setContentTitle(descriptionCompat.getTitle())
                 .setContentText(descriptionCompat.getSubtitle())
                 .setSubText(descriptionCompat.getDescription())
