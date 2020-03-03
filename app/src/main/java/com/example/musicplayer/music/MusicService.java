@@ -35,7 +35,8 @@ public class MusicService extends Service {
     private static final int SERVIRE_DIE = 10;
     private static final int FADE_UP = 11;
     private static final int FADE_DOWN = 12;
-    private static final int FOCUSE_CHANGE = 12;
+    private static final int FOCUSE_CHANGE = 13;
+    private static final int GO_TO_NEXT_TRUCK = 22;
 
     private final IBinder I_BINDER = new SubStub(this);
     public static ArrayList<PlayBackTrack> mPlayList = new ArrayList<>(100);
@@ -48,6 +49,7 @@ public class MusicService extends Service {
     private AudioManager mAudioManager;
     private MyPlayerHandler myPlayerHandler;
     private HandlerThread mHandlerThead;
+
     private AudioManager.OnAudioFocusChangeListener focusChangeListener = new AudioManager.OnAudioFocusChangeListener() {
         @Override
         public void onAudioFocusChange(int i) {
@@ -56,11 +58,26 @@ public class MusicService extends Service {
         }
     };
 
+    @Override
+    public boolean onUnbind(Intent intent) {
+
+        mSongPlayStatus.saveSongInDb(mPlayList);
+        if (isSuppossedToPlaying || mPausedByTransientLoosOfFocus){
+
+            return true;
+
+        }
+
+        stopSelf();
+        return true;
+
+    }
 
     @Override
     public void onCreate() {
-        Log.v(TAG, "onCreate");
         super.onCreate();
+
+
         mSongPlayStatus = SongPlayStatus.getInstance(this);
         mPlayList = mSongPlayStatus.getSongToDb();
         preferences= getSharedPreferences("musicservice",0);
@@ -84,10 +101,43 @@ public class MusicService extends Service {
         return I_BINDER;
     }
 
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+
+
+        return START_NOT_STICKY;
+    }
+
+    private boolean isPlaying(){
+        return isSuppossedToPlaying;
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        mPlayer.release();
+        mPlayer = null;
+    }
 
     //////////All method
 
+    private void goToNext(){
+        if (mPlayPos <= mPlayList.size() && mPlayPos >= 0){
+            mPlayPos++;
+        }
+        stop();
+        play();
+    }
+
+    private long position(){
+        if (mPlayer.mIsinitialized){
+            return mPlayer.position();
+        }
+        return -1;
+    }
+
     private void open(long[] list, int position, long sourceId, AxUtil.IdType idType) {
+
 
         synchronized (this){
 
@@ -95,7 +145,7 @@ public class MusicService extends Service {
             boolean newList = true;
             if (mPlayList.size() == mLenght){
                 newList = false;
-                Log.v(TAG, " " + mPlayList.size());
+
                 for (int i=0; i<mLenght; i++){
 
                     if (list[i] != mPlayList.get(i).mId){
@@ -170,8 +220,9 @@ public class MusicService extends Service {
 
     public long[] getsaveIdList() {
         synchronized (this) {
-            long[] idL = new long[mPlayList.size()];
-            for (int i = 0; i < mPlayList.size(); i++){
+            int lenght = mPlayList.size();
+            long[] idL = new long[lenght];
+            for (int i = 0; i < lenght; i++){
                 idL[i] = mPlayList.get(i).mId;
             }
             return idL;
@@ -180,6 +231,10 @@ public class MusicService extends Service {
     }
 
     private void pause() {
+        if (isSuppossedToPlaying){
+            mPlayer.pause();
+            isSuppossedToPlaying = false;
+        }
 
     }
 
@@ -192,10 +247,14 @@ public class MusicService extends Service {
         myPlayerHandler.removeMessages(FADE_DOWN);
         myPlayerHandler.sendEmptyMessage(FADE_UP);
         isSuppossedToPlaying = true;
+        mPausedByTransientLoosOfFocus = true;
 
     }
 
     private void stop() {
+        if (mPlayer.mIsinitialized){
+            mPlayer.stop();
+        }
 
     }
 
@@ -302,18 +361,22 @@ public class MusicService extends Service {
 
 
         @Override
-        public void onCompletion(MediaPlayer mp) {
+        public void onCompletion(MediaPlayer mediaPlayer) {
+
+            if (mediaPlayer == mMediaPlayer){
+                mHandler.sendEmptyMessage(GO_TO_NEXT_TRUCK);
+            }
 
         }
 
         @Override
-        public boolean onError(MediaPlayer mediaPlayer, int what, int extra) {
+        public boolean onError(MediaPlayer player, int what, int extra) {
 
             switch (what){
                 case MediaPlayer.MEDIA_ERROR_SERVER_DIED:
                     mIsinitialized = false;
-                        mediaPlayer.release();
-                        mediaPlayer = new MediaPlayer();
+                        mMediaPlayer.release();
+                        mMediaPlayer = new MediaPlayer();
                         Message message = mHandler.obtainMessage(SERVIRE_DIE);
                         mHandler.sendMessageDelayed(message,2000);
                         break;
@@ -322,6 +385,10 @@ public class MusicService extends Service {
             }
 
             return false;
+        }
+
+        public int getAudioSessionId(){
+            return  mMediaPlayer.getAudioSessionId();
         }
     }
 
@@ -350,28 +417,30 @@ public class MusicService extends Service {
 
             synchronized (service){
                 switch (msg.what){
+                    case FADE_UP:
+                        mVolume += 0.1f;
+                        if (mVolume < 1.0f){
+                            sendEmptyMessageDelayed(FADE_UP,10);
+                        }else {
+                            mVolume = 1.0f;
+                        }
+                        service.mPlayer.setVolume(mVolume);
+                        break;
+                    case FADE_DOWN:
+                        mVolume -= 0.5f;
+                        if (mVolume < 0.2f){
+                            sendEmptyMessageDelayed(FADE_DOWN,10);
+                        }else {
+                            mVolume = 0.2f;
+                        }
+                        service.mPlayer.setVolume(mVolume);
+                        break;
+                    case GO_TO_NEXT_TRUCK:
+                        goToNext();
+                        break;
                     case FOCUSE_CHANGE:
                         switch (msg.arg1){
-                            case FADE_UP:
-                                mVolume += 0.1f;
-                                if (mVolume < 1.0f){
-                                    sendEmptyMessageDelayed(FADE_UP,10);
-                                }else {
-                                    mVolume = 1.0f;
-                                }
-                                service.mPlayer.setVolume(mVolume);
-                                break;
-
-                            case FADE_DOWN:
-                                mVolume -= 0.5f;
-                                if (mVolume < 0.2f){
-                                    sendEmptyMessageDelayed(FADE_DOWN,10);
-                                }else {
-                                    mVolume = 0.2f;
-                                }
-                                service.mPlayer.setVolume(mVolume);
-                                break;
-                            case AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK:
+                            case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
                                 removeMessages(FADE_UP);
                                 sendEmptyMessage(FADE_DOWN);
                                 break;
@@ -437,6 +506,7 @@ public class MusicService extends Service {
         public void stop() throws RemoteException {
             mService.get().stop();
         }
+
 
         @Override
         public long getAudioId() throws RemoteException {

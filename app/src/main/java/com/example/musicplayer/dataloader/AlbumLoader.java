@@ -57,12 +57,13 @@ public class AlbumLoader {
 
         Uri uri = MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI;
         String[] projection = new String[]{
-                "_id",//0
-                "album",//1
-                "artist_id",//2
-                "artist",//3
-                "numsongs",//4
-                "minyear",//5
+                MediaStore.Audio.Albums._ID,//0
+                MediaStore.Audio.Albums.ALBUM,//1
+                MediaStore.Audio.Albums.ARTIST_ID,//2
+                MediaStore.Audio.Albums.ARTIST,//3
+                MediaStore.Audio.Albums.NUMBER_OF_SONGS,//4
+                MediaStore.Audio.Albums.FIRST_YEAR,//5
+
 
         };
         String sortOrder = MediaStore.Audio.Albums.DEFAULT_SORT_ORDER;
